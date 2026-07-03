@@ -1,3 +1,22 @@
+# ---------------- AUTH SIMPLE ----------------
+
+PASSWORD = "1234"  # cámbiala luego
+
+if "auth" not in st.session_state:
+    st.session_state.auth = False
+
+if not st.session_state.auth:
+    st.title("🔒 Acceso restringido")
+
+    password = st.text_input("Ingresa la contraseña", type="password")
+
+    if password == PASSWORD:
+        st.session_state.auth = True
+        st.rerun()
+    elif password:
+        st.error("Contraseña incorrecta")
+
+    st.stop()
 """
 app.py — Punto de entrada de Alchemy AI.
 
