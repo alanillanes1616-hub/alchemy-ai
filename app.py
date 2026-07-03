@@ -1,5 +1,4 @@
-# ---------------- AUTH SIMPLE ----------------
-
+import streamlit as st
 PASSWORD = "1234"  # cámbiala luego
 
 if "auth" not in st.session_state:
