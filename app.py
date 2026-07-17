@@ -1,41 +1,59 @@
 import streamlit as st
-import os
+from llm import build_llm, invoke, LLMConfig
+from memory import ConversationMemory
 
-# 1. Configuración de página minimalista
+# 1. Configuración de página
 st.set_page_config(page_title="Asistente Lago Azul", layout="centered")
 
-# 2. Estilos para "camuflar" (Forzar fondo blanco y ocultar elementos de Streamlit)
+# 2. CSS Mejorado para legibilidad total
 st.markdown("""
     <style>
-    /* Forzar fondo blanco y eliminar bordes de Streamlit */
-    .stApp { background-color: white !important; }
+    /* Fondo principal blanco y texto negro */
+    .stApp { background-color: white !important; color: black !important; }
+    
+    /* Asegurar que el texto del chat sea negro */
+    [data-testid="stChatMessage"] { color: black !important; }
+    div[data-testid="stChatMessage"] p { color: black !important; }
+    
+    /* Ocultar elementos de Streamlit que ensucian la vista */
     #MainMenu, footer, header { visibility: hidden !important; }
     
-    /* Hacer que el contenedor sea limpio */
-    section[data-testid="stSidebar"] { display: none !important; }
+    /* Input de texto con borde visible y texto negro */
+    [data-testid="stChatInput"] textarea { color: black !important; }
     </style>
 """, unsafe_allow_html=True)
 
-# 3. Inicialización básica de mensajes
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+# 3. Inicializar memoria y motor
+if "memory" not in st.session_state:
+    st.session_state.memory = ConversationMemory()
 
-# 4. Mostrar historial
-for msg in st.session_state.messages:
+# 4. Mostrar historial existente
+for msg in st.session_state.memory.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-# 5. Lógica del chat (Sin llamadas externas complejas por ahora)
+# 5. Lógica de respuesta real
 if prompt := st.chat_input("¿En qué podemos asesorarte hoy?"):
-    # Guardar y mostrar usuario
-    st.session_state.messages.append({"role": "user", "content": prompt})
+    # Mostrar mensaje usuario
+    st.session_state.memory.add_user(prompt)
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # Respuesta del asistente
+    # Procesar respuesta con tu IA
     with st.chat_message("assistant"):
-        # Mensaje temporal mientras verificas la integración
-        respuesta = "Hola, soy el asistente de Lago Azul. Estamos optimizando tu consulta. ¡En breve te atenderemos!"
-        st.markdown(respuesta)
-    
-    st.session_state.messages.append({"role": "assistant", "content": respuesta})
+        with st.spinner("Pensando..."):
+            try:
+                # Configuración del LLM usando tu arquitectura
+                llm = build_llm(LLMConfig(
+                    model="gemini-1.5-flash", 
+                    api_key=st.secrets["GOOGLE_API_KEY"]
+                ))
+                
+                # Invocación real a tu motor
+                system_prompt = "Eres el asistente legal de Lago Azul. Responde de forma profesional."
+                response = invoke(llm, st.session_state.memory.to_langchain(system_prompt))
+                
+                st.markdown(response)
+                st.session_state.memory.add_assistant(response)
+            except Exception as e:
+                st.error("Hubo un error al procesar tu consulta.")
