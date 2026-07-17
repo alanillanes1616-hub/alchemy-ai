@@ -5,7 +5,15 @@ from prompts import build_system_prompt
 
 # ── Configuración Minimalista ─────────────────────────────────────────────────
 st.set_page_config(page_title="Asistente Lago Azul", layout="centered")
-
+# Forzar tema claro en Streamlit
+st.markdown("""
+    <style>
+    /* Fondo blanco para coincidir con tu web */
+    .stApp { background: white !important; }
+    /* Eliminar logos y textos de Streamlit */
+    footer {display: none !important;}
+    </style>
+""", unsafe_allow_html=True)
 # Ocultar elementos de Streamlit para que sea "camuflado"
 hide_streamlit_style = """
     <style>
