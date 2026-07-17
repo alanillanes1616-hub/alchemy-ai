@@ -1,59 +1,60 @@
 import streamlit as st
-from llm import build_llm, invoke, LLMConfig
-from memory import ConversationMemory
+import google.generativeai as genai
 
 # 1. Configuración de página
 st.set_page_config(page_title="Asistente Lago Azul", layout="centered")
 
-# 2. CSS Mejorado para legibilidad total
+# 2. CSS para "Camuflaje" y Legibilidad
+# El fondo es transparente para que herede el color de tu web.
 st.markdown("""
     <style>
-    /* Fondo principal blanco y texto negro */
-    .stApp { background-color: white !important; color: black !important; }
+    /* Hacer transparente todo el contenedor de Streamlit */
+    .stApp { background: transparent !important; }
     
-    /* Asegurar que el texto del chat sea negro */
-    [data-testid="stChatMessage"] { color: black !important; }
-    div[data-testid="stChatMessage"] p { color: black !important; }
+    /* Forzar que el texto sea negro y el chat se vea decente */
+    [data-testid="stChatMessage"] { background-color: rgba(255, 255, 255, 0.9) !important; color: black !important; }
+    [data-testid="stChatMessage"] p { color: black !important; font-size: 16px; }
     
-    /* Ocultar elementos de Streamlit que ensucian la vista */
+    /* Ocultar elementos de Streamlit para que parezca parte de tu web */
     #MainMenu, footer, header { visibility: hidden !important; }
     
-    /* Input de texto con borde visible y texto negro */
-    [data-testid="stChatInput"] textarea { color: black !important; }
+    /* Estilo del input */
+    [data-testid="stChatInput"] { background-color: transparent !important; }
     </style>
 """, unsafe_allow_html=True)
 
-# 3. Inicializar memoria y motor
-if "memory" not in st.session_state:
-    st.session_state.memory = ConversationMemory()
+# 3. Inicializar Gemini
+# Asegúrate de tener GOOGLE_API_KEY en tus "Secrets" de Streamlit Cloud
+genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
+model = genai.GenerativeModel('gemini-1.5-flash')
 
-# 4. Mostrar historial existente
-for msg in st.session_state.memory.messages:
+# 4. Estado de la conversación
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+# 5. Mostrar historial
+for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-# 5. Lógica de respuesta real
+# 6. Lógica de consulta (Motor de búsqueda/IA)
 if prompt := st.chat_input("¿En qué podemos asesorarte hoy?"):
-    # Mostrar mensaje usuario
-    st.session_state.memory.add_user(prompt)
+    # Mostrar mensaje del usuario
+    st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # Procesar respuesta con tu IA
+    # Respuesta de la IA
     with st.chat_message("assistant"):
-        with st.spinner("Pensando..."):
-            try:
-                # Configuración del LLM usando tu arquitectura
-                llm = build_llm(LLMConfig(
-                    model="gemini-1.5-flash", 
-                    api_key=st.secrets["GOOGLE_API_KEY"]
-                ))
-                
-                # Invocación real a tu motor
-                system_prompt = "Eres el asistente legal de Lago Azul. Responde de forma profesional."
-                response = invoke(llm, st.session_state.memory.to_langchain(system_prompt))
-                
-                st.markdown(response)
-                st.session_state.memory.add_assistant(response)
-            except Exception as e:
-                st.error("Hubo un error al procesar tu consulta.")
+        try:
+            # System prompt para que actúe como abogado de Lago Azul
+            instruction = "Eres el asistente legal de Lago Azul. Responde de forma profesional, breve y clara."
+            full_query = f"{instruction} Pregunta: {prompt}"
+            
+            response = model.generate_content(full_query)
+            
+            st.markdown(response.text)
+            st.session_state.messages.append({"role": "assistant", "content": response.text})
+            
+        except Exception as e:
+            st.error("Lo sentimos, estamos teniendo problemas técnicos. Inténtalo de nuevo.")
