@@ -14,11 +14,19 @@ st.markdown("""
         color: #0f2942 !important;
     }
 
-    /* Burbuja del usuario: azul claro, texto oscuro */
-    [data-testid="stChatMessage"]:has(img[alt="user avatar"]) {
-        background-color: #eaf1f8 !important;
-        border: 1px solid #cfe0ee !important;
-        border-radius: 12px;
+    /* Burbuja del usuario: azul claro, texto claro */
+[data-testid="stChatMessage"]:has(img[alt="user avatar"]) {
+    background-color: #eaf1f8 !important;
+    border: 1px solid #cfe0ee !important;
+    border-radius: 12px;
+    /* Cambio aquí: texto claro */
+    color: #ffffff !important; 
+}
+
+/* Asegurar que los párrafos dentro de la burbuja también sean claros */
+[data-testid="stChatMessage"]:has(img[alt="user avatar"]) p {
+    color: #ffffff !important;
+}
     }
 
     /* Burbuja del asistente: blanco con borde izquierdo dorado, texto azul oscuro */
