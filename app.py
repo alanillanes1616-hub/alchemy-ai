@@ -1,53 +1,55 @@
 import streamlit as st
+from ui import inject_css, render_header, render_chat_history, render_welcome
 from llm import build_llm, invoke, LLMConfig
 from memory import ConversationMemory
-from prompts import build_system_prompt
+from rag import RAGEngine
+from config import DEFAULT_MODEL, DEFAULT_TEMPERATURE, DEFAULT_MAX_TOKENS
 
-# ── Configuración Minimalista ─────────────────────────────────────────────────
-st.set_page_config(page_title="Asistente Lago Azul", layout="centered")
-# Forzar tema claro en Streamlit
-st.markdown("""
-    <style>
-    /* Fondo blanco para coincidir con tu web */
-    .stApp { background: white !important; }
-    /* Eliminar logos y textos de Streamlit */
-    footer {display: none !important;}
-    </style>
-""", unsafe_allow_html=True)
-# Ocultar elementos de Streamlit para que sea "camuflado"
-hide_streamlit_style = """
-    <style>
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
-    </style>
-"""
-st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+# Configuración inicial
+st.set_page_config(page_title="Lago Azul AI", layout="wide", initial_sidebar_state="collapsed")
+inject_css()
 
-# ── Estado de sesión ─────────────────────────────────────────────────────────
+# Detectar si estamos en modo "camuflado" (incrustado)
+is_embedded = st.query_params.get("embed") == "true"
+
+# Estado
 if "memory" not in st.session_state:
     st.session_state.memory = ConversationMemory()
+if "rag" not in st.session_state:
+    st.session_state.rag = RAGEngine(st.secrets["GOOGLE_API_KEY"])
 
-# ── Lógica del Chat ──────────────────────────────────────────────────────────
-# Prompt fijo para tu despacho legal
-SYSTEM_PROMPT = """Eres el asistente virtual del despacho legal "Lago Azul". 
-Tu objetivo es responder consultas legales de forma clara, profesional y empática. 
-Si la consulta es compleja, sugiere al usuario contactar por WhatsApp."""
+# Lógica del Sidebar (Solo se muestra si NO está en modo embed)
+if not is_embedded:
+    with st.sidebar:
+        st.markdown("### Administración")
+        # Aquí puedes dejar tus herramientas de carga de documentos
+        # ... (puedes copiar aquí tu lógica de `file_uploader` de tu app original)
 
-# Renderizado del chat
-for msg in st.session_state.memory.messages:
-    with st.chat_message(msg["role"]):
-        st.markdown(msg["content"])
+# Área Principal
+if not is_embedded:
+    render_header("Asistente Legal")
 
-if user_input := st.chat_input("¿En qué podemos asesorarte hoy?"):
+# Lógica de Chat (Funciona igual, pero se ve limpia)
+if st.session_state.memory.is_empty():
+    if not is_embedded: render_welcome()
+else:
+    render_chat_history(st.session_state.memory)
+
+user_input = st.chat_input("¿En qué podemos asesorarte hoy?")
+
+if user_input:
     with st.chat_message("user"):
         st.markdown(user_input)
     
-    st.session_state.memory.add_user(user_input)
-    
-    # Invocación (Asegúrate de tener tus módulos de llm.py funcionando)
-    llm = build_llm(LLMConfig(model="gemini-1.5-flash", api_key=st.secrets["GOOGLE_API_KEY"]))
-    response = invoke(llm, st.session_state.memory.to_langchain(SYSTEM_PROMPT))
+    # RAG funcional
+    context = ""
+    if st.session_state.rag.has_index():
+        chunks = st.session_state.rag.retrieve(user_input)
+        context = st.session_state.rag.build_context(chunks)
+
+    # Invocación (Mantiene tu lógica de LLM original)
+    llm = build_llm(LLMConfig(model=DEFAULT_MODEL, api_key=st.secrets["GOOGLE_API_KEY"]))
+    response = invoke(llm, st.session_state.memory.to_langchain(f"Eres el asistente legal de Lago Azul. Contexto: {context}. Pregunta: {user_input}"))
     
     with st.chat_message("assistant"):
         st.markdown(response)
