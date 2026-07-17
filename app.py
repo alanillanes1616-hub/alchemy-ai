@@ -21,10 +21,13 @@ if not api_key:
     st.error("Error: Configura 'GOOGLE_API_KEY' en los Secrets de Streamlit.")
     st.stop()
 
-# 4. Inicialización del modelo (CAMBIO AQUÍ: 'gemini-pro' es universal)
+# 4. Inicialización del modelo
+# 'gemini-pro' ya no existe en la API. Usamos 'gemini-flash-latest',
+# que es un alias que Google mantiene siempre apuntando al modelo
+# Flash vigente (evita que esto se vuelva a romper en el futuro).
 try:
     genai.configure(api_key=api_key)
-    model = genai.GenerativeModel('gemini-pro')
+    model = genai.GenerativeModel('gemini-flash-latest')
 except Exception as e:
     st.error(f"Error al conectar con la API: {e}")
     st.stop()
@@ -46,11 +49,12 @@ if prompt := st.chat_input("¿En qué podemos asesorarte hoy?"):
     with st.chat_message("assistant"):
         with st.spinner("Consultando..."):
             try:
-                # El modelo 'gemini-pro' es el que tu librería actual aceptará sin error 404
-                response = model.generate_content(f"Eres el asistente legal de Lago Azul, un despacho en El Alto, Bolivia. Responde profesionalmente: {prompt}")
-                
+                response = model.generate_content(
+                    f"Eres el asistente legal de Lago Azul, un despacho en El Alto, Bolivia. "
+                    f"Responde profesionalmente: {prompt}"
+                )
+
                 st.markdown(response.text)
                 st.session_state.messages.append({"role": "assistant", "content": response.text})
             except Exception as e:
                 st.error(f"Error al generar respuesta: {e}")
-                
