@@ -4,12 +4,49 @@ import google.generativeai as genai
 # 1. Configuración de página
 st.set_page_config(page_title="Asistente Lago Azul", layout="centered")
 
-# 2. CSS para visibilidad (Forzamos fondo blanco y texto negro)
+# 2. CSS: fondo blanco, contraste legible y una identidad visual acorde
+#    a un despacho legal (azul profundo + acentos dorados sutiles).
 st.markdown("""
     <style>
-    .stApp { background-color: white !important; }
-    [data-testid="stChatMessage"] { background-color: #f0f2f6 !important; color: black !important; border-radius: 10px; }
-    [data-testid="stChatMessage"] p { color: black !important; font-size: 15px; }
+    .stApp { background-color: #ffffff !important; }
+
+    [data-testid="stChatInput"] textarea {
+        color: #0f2942 !important;
+    }
+
+    /* Burbuja del usuario: azul claro, texto oscuro */
+    [data-testid="stChatMessage"]:has(img[alt="user avatar"]) {
+        background-color: #eaf1f8 !important;
+        border: 1px solid #cfe0ee !important;
+        border-radius: 12px;
+    }
+
+    /* Burbuja del asistente: blanco con borde izquierdo dorado, texto azul oscuro */
+    [data-testid="stChatMessage"]:has(img[alt="assistant avatar"]) {
+        background-color: #f9fafb !important;
+        border: 1px solid #e3e6ea !important;
+        border-left: 4px solid #b8935a !important;
+        border-radius: 12px;
+    }
+
+    /* Fallback general por si el selector :has no aplica en algún navegador */
+    [data-testid="stChatMessage"] {
+        background-color: #f7f9fb !important;
+        border-radius: 12px;
+        padding: 4px 2px;
+    }
+
+    [data-testid="stChatMessage"] p,
+    [data-testid="stChatMessage"] li,
+    [data-testid="stChatMessage"] span {
+        color: #16263a !important;
+        font-size: 15.5px !important;
+        line-height: 1.55 !important;
+    }
+
+    /* Texto de error visible sobre fondo blanco */
+    [data-testid="stAlert"] p { color: #7a1f1f !important; }
+
     #MainMenu, footer, header { visibility: hidden !important; }
     </style>
 """, unsafe_allow_html=True)
