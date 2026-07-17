@@ -10,26 +10,37 @@ st.markdown("""
     <style>
     .stApp { background-color: #ffffff !important; }
 
+    /* --- Caja de entrada de texto (chat_input) --- */
+    /* Forzamos fondo claro en TODO el contenedor inferior, no solo el
+       textarea, porque el tema oscuro de Streamlit pinta el wrapper. */
+    [data-testid="stBottom"],
+    [data-testid="stBottomBlockContainer"] {
+        background-color: #ffffff !important;
+    }
+
+    [data-testid="stChatInput"] {
+        background-color: #ffffff !important;
+        border: 1px solid #cfe0ee !important;
+        border-radius: 12px !important;
+    }
+
     [data-testid="stChatInput"] textarea {
+        background-color: #ffffff !important;
         color: #0f2942 !important;
+        caret-color: #0f2942 !important;
     }
 
-    /* Burbuja del usuario: azul claro, texto claro */
-[data-testid="stChatMessage"]:has(img[alt="user avatar"]) {
-    background-color: #eaf1f8 !important;
-    border: 1px solid #cfe0ee !important;
-    border-radius: 12px;
-    /* Cambio aquí: texto claro */
-    color: #ffffff !important; 
-}
-
-/* Asegurar que los párrafos dentro de la burbuja también sean claros */
-[data-testid="stChatMessage"]:has(img[alt="user avatar"]) p {
-    color: #ffffff !important;
-}
+    [data-testid="stChatInput"] textarea::placeholder {
+        color: #7a8a9a !important;
     }
 
-    /* Burbuja del asistente: blanco con borde izquierdo dorado, texto azul oscuro */
+    /* --- Burbujas de chat --- */
+    [data-testid="stChatMessage"]:has(img[alt="user avatar"]) {
+        background-color: #eaf1f8 !important;
+        border: 1px solid #cfe0ee !important;
+        border-radius: 12px;
+    }
+
     [data-testid="stChatMessage"]:has(img[alt="assistant avatar"]) {
         background-color: #f9fafb !important;
         border: 1px solid #e3e6ea !important;
@@ -37,7 +48,6 @@ st.markdown("""
         border-radius: 12px;
     }
 
-    /* Fallback general por si el selector :has no aplica en algún navegador */
     [data-testid="stChatMessage"] {
         background-color: #f7f9fb !important;
         border-radius: 12px;
@@ -52,7 +62,6 @@ st.markdown("""
         line-height: 1.55 !important;
     }
 
-    /* Texto de error visible sobre fondo blanco */
     [data-testid="stAlert"] p { color: #7a1f1f !important; }
 
     #MainMenu, footer, header { visibility: hidden !important; }
@@ -67,9 +76,6 @@ if not api_key:
     st.stop()
 
 # 4. Inicialización del modelo
-# 'gemini-pro' ya no existe en la API. Usamos 'gemini-flash-latest',
-# que es un alias que Google mantiene siempre apuntando al modelo
-# Flash vigente (evita que esto se vuelva a romper en el futuro).
 try:
     genai.configure(api_key=api_key)
     model = genai.GenerativeModel('gemini-flash-latest')
@@ -85,21 +91,32 @@ for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-# 6. Lógica del Chat
+
+# 6. Generador de texto en streaming
+#    En vez de esperar la respuesta completa y mostrarla de golpe (lo que
+#    hace que la página salte hasta el final), el texto va apareciendo
+#    palabra por palabra, como una conversación real. Esto también evita
+#    el salto brusco al fondo de la página.
+def generar_respuesta_stream(prompt):
+    respuesta = model.generate_content(
+        f"Eres el asistente legal de Lago Azul, un despacho en El Alto, Bolivia. "
+        f"Responde profesionalmente: {prompt}",
+        stream=True,
+    )
+    for chunk in respuesta:
+        if chunk.text:
+            yield chunk.text
+
+
+# 7. Lógica del Chat
 if prompt := st.chat_input("¿En qué podemos asesorarte hoy?"):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
-        with st.spinner("Consultando..."):
-            try:
-                response = model.generate_content(
-                    f"Eres el asistente legal de Lago Azul, un despacho en El Alto, Bolivia. "
-                    f"Responde profesionalmente: {prompt}"
-                )
-
-                st.markdown(response.text)
-                st.session_state.messages.append({"role": "assistant", "content": response.text})
-            except Exception as e:
-                st.error(f"Error al generar respuesta: {e}")
+        try:
+            texto_completo = st.write_stream(generar_respuesta_stream(prompt))
+            st.session_state.messages.append({"role": "assistant", "content": texto_completo})
+        except Exception as e:
+            st.error(f"Error al generar respuesta: {e}")
