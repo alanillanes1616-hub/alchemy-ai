@@ -4,7 +4,7 @@ import google.generativeai as genai
 # 1. Configuración de página
 st.set_page_config(page_title="Asistente Lago Azul", layout="centered")
 
-# 2. CSS para "Camuflaje" (Fondo blanco, texto negro, sin elementos de Streamlit)
+# 2. CSS para visibilidad (Forzamos fondo blanco y texto negro)
 st.markdown("""
     <style>
     .stApp { background-color: white !important; }
@@ -21,11 +21,10 @@ if not api_key:
     st.error("Error: Configura 'GOOGLE_API_KEY' en los Secrets de Streamlit.")
     st.stop()
 
-# 4. Inicialización del modelo (Usando la versión más estable y actual: gemini-1.5-pro)
+# 4. Inicialización del modelo (CAMBIO AQUÍ: 'gemini-pro' es universal)
 try:
     genai.configure(api_key=api_key)
-    # gemini-1.5-pro es el estándar actual y más compatible
-    model = genai.GenerativeModel('gemini-1.5-pro')
+    model = genai.GenerativeModel('gemini-pro')
 except Exception as e:
     st.error(f"Error al conectar con la API: {e}")
     st.stop()
@@ -47,14 +46,11 @@ if prompt := st.chat_input("¿En qué podemos asesorarte hoy?"):
     with st.chat_message("assistant"):
         with st.spinner("Consultando..."):
             try:
-                # Instrucción de sistema
-                instruction = "Eres el asistente legal de Lago Azul, un despacho en El Alto, Bolivia. Responde de forma profesional, breve y clara."
+                # El modelo 'gemini-pro' es el que tu librería actual aceptará sin error 404
+                response = model.generate_content(f"Eres el asistente legal de Lago Azul, un despacho en El Alto, Bolivia. Responde profesionalmente: {prompt}")
                 
-                # Generación de respuesta
-                response = model.generate_content(f"{instruction} Consulta: {prompt}")
-                
-                # Renderizado
                 st.markdown(response.text)
                 st.session_state.messages.append({"role": "assistant", "content": response.text})
             except Exception as e:
                 st.error(f"Error al generar respuesta: {e}")
+                
